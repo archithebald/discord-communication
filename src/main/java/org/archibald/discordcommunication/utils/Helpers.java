@@ -1,28 +1,40 @@
 package org.archibald.discordcommunication.utils;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import net.minecraft.world.entity.ai.goal.Goal;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
-import org.openjdk.nashorn.internal.runtime.JSONFunctions;
 
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.Map;
 import java.util.Scanner;
 
 public class Helpers {
-    public void getWebhookObject(String id) {
-        String url = "";
-
-
-    }
-
-    public static JSONObject fetchResponse(String url) {
+    public static JSONObject fetchResponse(String url, String method, JSONObject requestBodyObject, Map<String, String> headers) {
         try {
+
             HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
+            conn.setRequestMethod(method);
+            conn.setDoOutput(true);
+
+            if (headers != null) {
+                headers.forEach((key, value) -> {
+                    conn.setRequestProperty(key, value);
+                });
+            }
+
+            if (requestBodyObject != null) {
+                String requestBody = requestBodyObject.toString();
+
+                OutputStream os = conn.getOutputStream();
+                OutputStreamWriter osw = new OutputStreamWriter(os, "utf-8");
+                osw.write(requestBody);
+                osw.flush();
+                osw.close();
+                os.close();
+            }
+            conn.connect();
 
             StringBuilder response = new StringBuilder();
             Scanner scanner = new Scanner(conn.getInputStream());
@@ -31,20 +43,22 @@ public class Helpers {
                 response.append(scanner.nextLine());
             }
 
-            JSONParser parser = new JSONParser();
+            conn.disconnect();
+            scanner.close();
 
-            JSONObject data = (JSONObject) parser.parse(response.toString());
+            if (response.length() > 0) {
+                JSONParser parser = new JSONParser();
 
-            return data;
+                JSONObject data = (JSONObject) parser.parse(response.toString());
+
+                return data;
+            }
+
+            return null;
         } catch (Exception e) {
             e.printStackTrace();
         }
 
         return null;
-    }
-
-    public static void main(String[] args) {
-        JSONObject responseObject = Helpers.fetchResponse("http://api.open-notify.org/astros.json");
-        System.out.println(responseObject.get("people"));
     }
 }
